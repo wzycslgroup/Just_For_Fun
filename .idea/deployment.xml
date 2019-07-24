@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="PublishConfigData" autoUpload="Always" serverName="slcheng@222.20.79.226:1035">
+    <serverData>
+      <paths name="1035">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/home/slcheng/AutoEncoder-master" local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="slcheng@222.20.79.226:1035">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/home/slcheng/AutoEncoder-master" local="$PROJECT_DIR$" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="slcheng@222.20.79.226:1035 (1)">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/home/slcheng/AutoEncoder-master" local="$PROJECT_DIR$" />
+          </mappings>
+        </serverdata>
+      </paths>
+    </serverData>
+    <option name="myAutoUpload" value="ALWAYS" />
+  </component>
+</project>
