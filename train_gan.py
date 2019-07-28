@@ -10,26 +10,22 @@ import numpy as np
 import datetime
 import os
 from pathlib import Path
-from model.AE import AutoEncoder
-from model.VAE import VariationalAutoEncoder
-# from model.CVAE import CVAE
-from model.ConvAE import ConvAutoencoder
-from model.ConvVAE import ConvVAE
-from model.ConvVAE_v2 import ConvVAE_v2
+import torch.functional as F
+from model.GAN import Generator, Discriminator
 from data_utils.FaceDataSet import load_data, FaceDataset
 os.environ['QT_QPA_PLATFORM'] = 'offscreen'
 
 parser = argparse.ArgumentParser('AutoEncoder')
 parser.add_argument('--gpu', type=str, default='0', help="number of gpu")
-parser.add_argument('--dataset', type=str, default='LFW', help='LFW/MNIST')
-parser.add_argument('--method', type=str, default='AE', help='AE/VAE/CVAE/ConvAE/ConvVAE/ConvVAE_v2')
+parser.add_argument('--dataset', type=str, default='MNIST', help='LFW/MNIST')
+parser.add_argument('--method', type=str, default='GAN', help='GAN')
 parser.add_argument('--N', default=5, type=int, help='number of images to show')
-parser.add_argument('--batch_size', type=int, default=256, help='batch size in training')
+parser.add_argument('--batch_size', type=int, default=64, help='batch size in training')
 parser.add_argument('--epoch',  default=50, type=int, help='number of epoch in training')
-parser.add_argument('--learning_rate', default=0.001, type=float, help='learning rate in training')
+parser.add_argument('--learning_rate', default=0.0002, type=float, help='learning rate in training')
 args = parser.parse_args()
 N = args.N
-DOWNLOAD_MNIST = False
+DOWNLOAD_MNIST = True
 os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
 
 global W, H, latent_dim, Cin
@@ -72,10 +68,12 @@ else :
     W = 28
     H = 28
     Cin = 2
-    latent_dim = 2
+    latent_dim = 30
     transform = torchvision.transforms.Compose([
             torchvision.transforms.ToTensor(),
             # torchvision.transforms.Normalize(0, 1),
+            torchvision.transforms.Normalize(mean=[0.5], std=[0.5]),
+
         ]
     )
     train_data = torchvision.datasets.MNIST(
@@ -89,25 +87,19 @@ else :
         train=False,
         transform=transform,
     )
-
-
 train_loader = Data.DataLoader(dataset=train_data, batch_size=args.batch_size, shuffle=True)
 
 # load model
 logger.info('Load model...')
-if args.method == 'AE':
-    model = AutoEncoder(latent_dim, W, H).cuda()
-elif args.method == 'VAE':
-    model = VariationalAutoEncoder(latent_dim, W, H).cuda()
-elif args.method =='ConvAE':
-    model = ConvAutoencoder(Cin).cuda()
-    # model = CVAE(latent_dim, W, H).cuda()
-elif args.method == 'ConvVAE':
-    model = ConvVAE(Cin, latent_dim).cuda()
+if args.method == 'GAN':
+    generator = Generator(latent_dim, W, H).cuda()
+    discriminator = Discriminator(W, H).cuda()
 else:
-    model = ConvVAE_v2(W, H).cuda()
-optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
+    None
+optimizer_g = torch.optim.Adam(generator.parameters(), lr=args.learning_rate)
+optimizer_d = torch.optim.Adam(discriminator.parameters(), lr=args.learning_rate)
 
+criteria = torch.nn.BCELoss()
 
 # traning process
 def train():
@@ -118,28 +110,32 @@ def train():
     # randomly sample N images to visualize
     # train_num = train_data.data.shape[0]
     # test_num = test_data.data.shape[0]
-    tot_num = total_data.data.shape[0]
-    random.seed(tot_num)
-    slice = random.sample(list(range(0, tot_num)), N)
+    # tot_num = total_data.data.shape[0]
+    # random.seed(tot_num)
+    # slice = random.sample(list(range(0, tot_num)), N)
     # slice = list(range(N))
-    origin_image = torch.empty(N, W*H)
-    # origin_label = torch.empty(N, 1)
-    for i in range(N):
-        origin_image[i] = total_data.train_data[slice[i]].view(-1, W*H)\
-                        .type(torch.FloatTensor)
-        # origin_label[i] = test_data.train_labels[slice[i]].type(torch.FloatTensor)
-        ax[0][i].imshow(np.reshape(origin_image.data.numpy()[i], (W, H)))
-        ax[0][i].set_xticks([])
-        ax[0][i].set_yticks([])
+    # origin_image = torch.empty(N, W*H)
+    # # origin_label = torch.empty(N, 1)
+    # for i in range(N):
+    #     origin_image[i] = total_data.train_data[slice[i]].view(-1, W*H)\
+    #                     .type(torch.FloatTensor)
+    #     # origin_label[i] = test_data.train_labels[slice[i]].type(torch.FloatTensor)
+    #     ax[0][i].imshow(np.reshape(origin_image.data.numpy()[i], (W, H)))
+    #     ax[0][i].set_xticks([])
+    #     ax[0][i].set_yticks([])
 
     # begin to train
     images = []
-    model.train()
+    turn = 1
+    generator.train()
+    discriminator.train()
     for epoch in range(args.epoch):
-        tot_loss = 0
+        loss = torch.zeros((2))
+        turn_g = 1
+        turn_d = 1
         t = 0
         for id, (x, label) in enumerate(train_loader):
-            if args.method == 'ConvAE' or args.method == 'ConvVAE' or args.method == 'ConvVAE_v2' :
+            if args.method == '12' :
                 b_x = torch.Tensor(x.unsqueeze(1)).float().cuda()
                 b_y = torch.Tensor(x.unsqueeze(1)).float().cuda()
             else:
@@ -147,24 +143,52 @@ def train():
                 b_y = torch.Tensor(x.view(-1, W*H)).float().cuda()
             label = label.float().cuda()
 
-            encoded, decoded = model(b_x, label)
-            loss = model.compute_loss(decoded, b_y)
-            tot_loss += loss
+
+
+
+            B, _= b_x.shape
+
+            if id % turn_g == 0:
+                z = torch.randn(B, latent_dim).cuda()
+                fake = generator(z)
+                fake_score = discriminator(fake)
+                g_loss = criteria(fake_score, torch.ones_like(fake_score))
+
+                optimizer_g.zero_grad()
+                g_loss.backward()
+                optimizer_g.step()
+                loss[0] += g_loss.data * turn_g
+
+            z = torch.randn(B, latent_dim).cuda()
+            fake = generator(z)
+            fake_score = discriminator(fake)
+            real_score = discriminator(b_x)
+
+            d_fake_loss = criteria(fake_score, torch.zeros_like(fake_score))
+            d_real_loss = criteria(real_score, torch.ones_like(fake_score))
+            d_loss = (d_fake_loss + d_real_loss) / 2
+
+            optimizer_d.zero_grad()
+            d_loss.backward()
+            optimizer_d.step()
+
+            loss[1] += d_loss.data
+
             t += 1
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-        logger.info('Epoch %d : Train Loss %.4f' % (epoch, tot_loss / t))
-        print('Epoch: ', epoch, "| train loss: %.4f" % (tot_loss / t))
-        if epoch % 50 == 0:
-            if args.method == 'ConvAE' or args.method == 'ConvVAE' or args.method == 'ConvVAE_v2':
-                org_img = origin_image.reshape(-1, 1, W, H)
-                _, decoded_data = model(org_img.cuda())
-            else:
-                _, decoded_data = model(origin_image.cuda())
+
+        logger.info('Epoch %d : G Loss %.4f D Loss %.4f' % (epoch, loss[0] / t , loss[1] / t ))
+        print('Epoch: ', epoch, "| G Loss %.4f D Loss %.4f" % (loss[0] / t, loss[1] / t ))
+        if epoch % 5 == 0:
+            # if args.method == 'ConvAE' or args.method == 'ConvVAE' or args.method == 'ConvVAE_v2':
+            #     org_img = origin_image.reshape(-1, 1, W, H)
+            #     _, decoded_data = model(org_img.cuda())
+            # else:
+            #     _, decoded_data = model(origin_image.cuda())
+            z = torch.randn((N, latent_dim)).cuda()
+            img = generator(z)
             for i in range(N):
                 ax[1][i].clear()
-                ax[1][i].imshow(np.reshape(decoded_data.cpu().data.numpy()[i], (W, H)), cmap='gray')
+                ax[1][i].imshow(np.reshape(img.cpu().data.numpy()[i], (W, H)), cmap='gray')
                 ax[1][i].set_xticks(())
                 ax[1][i].set_yticks(())
                 # plt.show()
