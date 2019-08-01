@@ -4,13 +4,14 @@ import torch.nn.functional as F
 
 
 class Generator(nn.Module):
-    def __init__(self, dim, W, H):
+    def __init__(self, dim, n_class, W, H):
         super(Generator, self).__init__()
         self.dim = dim
+        self.n_class = n_class
         self.W = W
         self.H = H
         self.G = nn.Sequential(
-            nn.Linear(dim, 64),
+            nn.Linear(dim+n_class, 64),
             nn.LeakyReLU(),
             nn.Linear(64, 128),
             nn.LeakyReLU(),
@@ -20,11 +21,12 @@ class Generator(nn.Module):
             nn.LeakyReLU(),
             nn.Linear(512, W*H),
             nn.Tanh()
-            # nn.Sigmoid()
         )
 
-    def forward(self, z):
-        return self.G(z)
+    def forward(self, z, label):
+        one_hot_y = torch.eye(self.n_class)[label.long()].cuda()
+        z_y = torch.cat([z, one_hot_y], dim=1)
+        return self.G(z_y)
 
     def compute_loss(self):
         loss = None
@@ -32,12 +34,13 @@ class Generator(nn.Module):
 
 
 class Discriminator(nn.Module):
-    def __init__(self, W, H):
+    def __init__(self, W, H, n_class):
         super(Discriminator, self).__init__()
         self.W = W
         self.H = H
+        self.n_class = n_class
         self.D = nn.Sequential(
-            nn.Linear(W*H, 512),
+            nn.Linear(W*H+n_class, 512),
             nn.LeakyReLU(),
             nn.Linear(512, 256),
             nn.LeakyReLU(),
@@ -47,8 +50,10 @@ class Discriminator(nn.Module):
             nn.Sigmoid()
         )
 
-    def forward(self, img):
-        return self.D(img)
+    def forward(self, img, label):
+        one_hot_y = torch.eye(self.n_class)[label.long()].cuda()
+        img_y = torch.cat([img, one_hot_y], dim=1)
+        return self.D(img_y)
 
     def compute_loss(self):
         loss = None
