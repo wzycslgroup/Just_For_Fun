@@ -4,6 +4,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.datasets import fetch_lfw_people
 
 
+
 def translate(X):
     return torch.from_numpy(X)
 

@@ -12,16 +12,18 @@ import os
 from scipy.stats import norm
 from pathlib import Path
 import torch.functional as F
-# from model.GAN import Generator, Discriminator
-from model.cGAN import Generator, Discriminator
+from model.DCGAN import Generator, Discriminator
+# from model.cGAN import Generator, Discriminator
+
 
 from data_utils.FaceDataSet import load_data, FaceDataset
+from data_utils.faces import load_cartoon, FaceCartoonDataset
 os.environ['QT_QPA_PLATFORM'] = 'offscreen'
 
 parser = argparse.ArgumentParser('AutoEncoder')
 parser.add_argument('--gpu', type=str, default='0', help="number of gpu")
-parser.add_argument('--dataset', type=str, default='MNIST', help='LFW/MNIST')
-parser.add_argument('--method', type=str, default='GAN', help='GAN')
+parser.add_argument('--dataset', type=str, default='cartoon', help='LFW/MNIST/cartoon')
+parser.add_argument('--method', type=str, default='DCGAN', help='GAN')
 parser.add_argument('--N', default=10, type=int, help='number of images to show')
 parser.add_argument('--batch_size', type=int, default=64, help='batch size in training')
 parser.add_argument('--epoch',  default=100, type=int, help='number of epoch in training')
@@ -67,7 +69,7 @@ if args.dataset == 'LFW':
     total_data = FaceDataset(img, label)
     train_data = FaceDataset(X_train, y_train)
     test_data = FaceDataset(X_test, y_test)
-else :
+elif args.dataset == 'MNIST':
     W = 28
     H = 28
     Cin = 2
@@ -90,13 +92,23 @@ else :
         train=False,
         transform=transform,
     )
+elif args.dataset == 'cartoon':
+    W = 96
+    H = 96
+    Cin = 3
+    latent_dim = 100
+    n_class = 10
+    path = 'dataset/anime'
+    file_index = load_cartoon(path)
+    train_data = FaceCartoonDataset(path)
+
 train_loader = Data.DataLoader(dataset=train_data, batch_size=args.batch_size, shuffle=True)
 
 # load model
 logger.info('Load model...')
-if args.method == 'GAN':
-    generator = Generator(latent_dim, n_class, W, H).cuda()
-    discriminator = Discriminator(W, H, n_class).cuda()
+if args.method == 'DCGAN':
+    generator = Generator(latent_dim, W, H).cuda()
+    discriminator = Discriminator(W, H).cuda()
 else:
     None
 optimizer_g = torch.optim.Adam(generator.parameters(), lr=args.learning_rate)
@@ -120,19 +132,16 @@ def train():
         turn_d = 1
         t = 0
         for id, (x, label) in enumerate(train_loader):
-            if args.method == '12' :
-                b_x = torch.Tensor(x.unsqueeze(1)).float().cuda()
+            if args.method == 'DCGAN':
+                b_x = torch.Tensor(x).float().cuda()
             else:
                 b_x = torch.Tensor(x.view(-1, W*H)).float().cuda()
-            label = label.float().cuda()
+            B = b_x.shape[0]
 
-            B, _= b_x.shape
+            z = torch.randn(B, latent_dim).view(B, latent_dim, 1, 1).cuda()
 
-            z = torch.randn(B, latent_dim).cuda()
-            z_y = torch.randint(0, 10, (B,)).cuda()
-
-            fake = generator(z, z_y)
-            fake_score = discriminator(fake, z_y)
+            fake = generator(z)
+            fake_score = discriminator(fake)
             g_loss = criteria(fake_score, torch.ones_like(fake_score))
 
             optimizer_g.zero_grad()
@@ -140,13 +149,13 @@ def train():
             optimizer_g.step()
             loss[0] += g_loss.data * turn_g
 
-            fake = generator(z, z_y)
-            fake_score = discriminator(fake, z_y)
-            real_score = discriminator(b_x, label)
+            fake = generator(z)
+            fake_score = discriminator(fake)
+            real_score = discriminator(b_x)
 
             d_fake_loss = criteria(fake_score, torch.zeros_like(fake_score))
             d_real_loss = criteria(real_score, torch.ones_like(fake_score))
-            d_loss = (d_fake_loss + d_real_loss) / 2
+            d_loss = d_fake_loss + d_real_loss
 
             optimizer_d.zero_grad()
             d_loss.backward()
@@ -158,11 +167,10 @@ def train():
 
         logger.info('Epoch %d : G Loss %.4f D Loss %.4f' % (epoch, loss[0] / t , loss[1] / t ))
         print('Epoch: ', epoch, "| G Loss %.4f D Loss %.4f" % (loss[0] / t, loss[1] / t ))
-        if epoch % 2 == 0:
+        if epoch % 10 == 0:
             for i in range(n_class):
-                z = torch.randn((N, latent_dim)).cuda()
-                z_y = torch.tensor([i] * N).view(N).cuda()
-                img = generator(z, z_y)
+                z = torch.randn(B, latent_dim).view(B, latent_dim, 1, 1).cuda()
+                img = generator(z)
                 for j in range(N):
                     ax[i][j].clear()
                     ax[i][j].imshow(np.reshape(img.cpu().data.numpy()[j], (W, H)), cmap='gray')

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="PublishConfigData" autoUpload="Always" serverName="slcheng@222.20.79.226:1035">
+  <component name="PublishConfigData" autoUpload="Always" serverName="slcheng@222.20.79.228:1062 (2)">
     <serverData>
       <paths name="1035">
         <serverdata>
@@ -16,10 +16,24 @@
           </mappings>
         </serverdata>
       </paths>
-      <paths name="slcheng@222.20.79.226:1035 (1)">
+      <paths name="slcheng@222.20.79.228:1062">
         <serverdata>
           <mappings>
-            <mapping deploy="/home/slcheng/AutoEncoder-master" local="$PROJECT_DIR$" />
+            <mapping local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="slcheng@222.20.79.228:1062 (1)">
+        <serverdata>
+          <mappings>
+            <mapping local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="slcheng@222.20.79.228:1062 (2)">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/home/slcheng/expriments/cGAN" local="$PROJECT_DIR$" web="/" />
           </mappings>
         </serverdata>
       </paths>

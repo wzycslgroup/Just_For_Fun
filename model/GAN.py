@@ -22,12 +22,10 @@ class Generator(nn.Module):
             nn.Linear(512, W*H),
             nn.Tanh()
         )
-        self.label_embedding = nn.Embedding(self.n_class, self.n_class)
 
     def forward(self, z, label):
-        # one_hot_y = torch.eye(self.n_class)[label.long()].cuda()
-        embedding_y = self.label_embedding(label.long()).cuda()
-        z_y = torch.cat([z, embedding_y], dim=1)
+        one_hot_y = torch.eye(self.n_class)[label.long()].cuda()
+        z_y = torch.cat([z, one_hot_y], dim=1)
         return self.G(z_y)
 
     def compute_loss(self):
@@ -45,20 +43,16 @@ class Discriminator(nn.Module):
             nn.Linear(W*H+n_class, 512),
             nn.LeakyReLU(),
             nn.Linear(512, 256),
-            nn.Dropout(),
             nn.LeakyReLU(),
-            nn.Linear(256, 64),
-            nn.Dropout(),
+            nn.Linear(256, 16),
             nn.LeakyReLU(),
-            nn.Linear(64, 1),
+            nn.Linear(16, 1),
             nn.Sigmoid()
         )
-        self.label_embedding = nn.Embedding(self.n_class, self.n_class)
 
     def forward(self, img, label):
-        # one_hot_y = torch.eye(self.n_class)[label.long()].cuda()
-        embedding_y = self.label_embedding(label.long()).cuda()
-        img_y = torch.cat([img, embedding_y], dim=1)
+        one_hot_y = torch.eye(self.n_class)[label.long()].cuda()
+        img_y = torch.cat([img, one_hot_y], dim=1)
         return self.D(img_y)
 
     def compute_loss(self):
