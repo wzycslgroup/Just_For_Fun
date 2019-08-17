@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="RemoteMappingsManager">
+    <list>
+      <list>
+        <remote-mappings server-id="python@sftp://slcheng@222.20.79.228:1062/home/slcheng/anaconda3/envs/pytorch0.4/bin/python3.7m" />
+      </list>
+    </list>
+  </component>
+</project>

@@ -39,27 +39,27 @@ class Discriminator(nn.Module):
         self.D = nn.Sequential(
             nn.Conv2d(3, 32, 4, 2, 1, bias=False),
             nn.LeakyReLU(0.2),
-            nn.Dropout(),
+            # nn.Dropout(),
             nn.Conv2d(32, 64, 4, 2, 1, bias=False),
             nn.BatchNorm2d(64),
             nn.LeakyReLU(0.2),
-            nn.Dropout(),
+            # nn.Dropout(),
             nn.Conv2d(64, 128, 4, 2, 1, bias=False),
             nn.BatchNorm2d(128),
             nn.LeakyReLU(0.2),
-            nn.Dropout(),
+            # nn.Dropout(),
             nn.Conv2d(128, 256, 4, 2, 1, bias=False),
             nn.BatchNorm2d(256),
             nn.LeakyReLU(0.2),
-            nn.Dropout(),
+            # nn.Dropout(),
             nn.Conv2d(256, 512, 4, 2, 1, bias=False),
             nn.BatchNorm2d(512),
             nn.LeakyReLU(0.2),
-            nn.Dropout(),
+            # nn.Dropout(),
             nn.Conv2d(512, 1, 3, 1, 0, bias=False),
             nn.Sigmoid()
 
         )
 
     def forward(self, img):
-       return self.D(img)
+       return self.D(img).view(-1)
