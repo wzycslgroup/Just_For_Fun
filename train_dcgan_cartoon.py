@@ -93,8 +93,15 @@ elif args.dataset == 'cartoon':
     Cin = 3
     latent_dim = 100
     n_class = 5
-    path = "dataset/faces"
-    train_data = FaceCartoonDataset(path)
+    path = "dataset/"
+    # train_data = FaceCartoonDataset(path)
+    transforms = torchvision.transforms.Compose([
+        torchvision.transforms.ToTensor(),
+        torchvision.transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+    ]
+    )
+    train_data = torchvision.datasets.ImageFolder(path, transform=transforms)
+
 
 train_loader = Data.DataLoader(dataset=train_data, batch_size=args.batch_size, shuffle=True, drop_last=True)
 
@@ -121,7 +128,7 @@ def train():
     for epoch in range(args.epoch):
         loss = torch.zeros((2))
         t = 0
-        for id, imgs in enumerate(train_loader):
+        for id, (imgs,_) in enumerate(train_loader):
             b_x = torch.Tensor(imgs).float().cuda()
 
             B = b_x.shape[0]
